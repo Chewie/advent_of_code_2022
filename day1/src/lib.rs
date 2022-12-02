@@ -28,13 +28,15 @@ impl Inventory {
     pub fn highest_three_sum(&self) -> u32 {
         use std::collections::BinaryHeap;
 
-        self.0
+        let mut heap = self
+            .0
             .iter()
             .map(|elf| elf.iter().sum())
-            .collect::<BinaryHeap<u32>>()
-            .iter()
-            .take(3)
-            .sum()
+            .collect::<BinaryHeap<u32>>();
+
+        // Poor man's into_iter_sorted
+        let iter = std::iter::from_fn(|| heap.pop());
+        iter.take(3).sum()
     }
 }
 
