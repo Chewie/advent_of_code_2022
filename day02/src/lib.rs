@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Move {
-    Rock,
-    Paper,
-    Scissors,
+    Rock = 1,
+    Paper = 2,
+    Scissors = 3,
 }
 use Move::*;
 
@@ -46,11 +46,7 @@ impl Round {
     }
 
     fn shape_score(&self) -> u32 {
-        match self.your_move {
-            Rock => 1,
-            Paper => 2,
-            Scissors => 3,
-        }
+        self.your_move as u32
     }
 
     fn outcome_score(&self) -> u32 {
