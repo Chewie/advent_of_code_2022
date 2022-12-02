@@ -4,9 +4,10 @@ fn main() {
     let mut lines = String::new();
     std::io::stdin().read_to_string(&mut lines).unwrap();
 
-    let inventory = day1::construct_inventory(lines);
-    let sum = day1::highest_sum(&inventory);
-    let three_sum = day1::highest_three_sum(&inventory);
+    let inventory = day1::Inventory::from_string(lines);
+    let sum = inventory.highest_sum();
+    let three_sum = inventory.highest_three_sum();
+
     println!("Highest sum: {sum}");
     println!("Highest three sum: {three_sum}");
 }

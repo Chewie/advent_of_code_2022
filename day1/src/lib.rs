@@ -1,35 +1,41 @@
 type Elf = Vec<u32>;
-type Inventory = Vec<Elf>;
 
-pub fn construct_inventory<T: AsRef<str>>(lines: T) -> Inventory {
-    lines
-        .as_ref()
-        .trim()
-        .split("\n\n")
-        .map(|single_elf| {
-            single_elf
-                .split("\n")
-                .map(|item| item.parse().unwrap())
-                .collect()
-        })
-        .collect()
-}
+#[derive(Debug, PartialEq)]
+pub struct Inventory(Vec<Elf>);
 
-pub fn highest_sum(total: &Inventory) -> u32 {
-    let calories = total.iter().map(|v| v.iter().sum());
-    calories.max().unwrap()
-}
+impl Inventory {
+    pub fn from_string<T: AsRef<str>>(string: T) -> Inventory {
+        Inventory(
+            string
+                .as_ref()
+                .trim()
+                .split("\n\n")
+                .map(|single_elf| {
+                    single_elf
+                        .split("\n")
+                        .map(|item| item.parse().unwrap())
+                        .collect()
+                })
+                .collect(),
+        )
+    }
 
-pub fn highest_three_sum(inventory: &Inventory) -> u32 {
-    use std::collections::BinaryHeap;
+    pub fn highest_sum(&self) -> u32 {
+        let calories = self.0.iter().map(|v| v.iter().sum());
+        calories.max().unwrap()
+    }
 
-    inventory
-        .iter()
-        .map(|elf| elf.iter().sum())
-        .collect::<BinaryHeap<u32>>()
-        .iter()
-        .take(3)
-        .sum()
+    pub fn highest_three_sum(&self) -> u32 {
+        use std::collections::BinaryHeap;
+
+        self.0
+            .iter()
+            .map(|elf| elf.iter().sum())
+            .collect::<BinaryHeap<u32>>()
+            .iter()
+            .take(3)
+            .sum()
+    }
 }
 
 #[cfg(test)]
@@ -39,12 +45,12 @@ mod tests {
     #[test]
     fn construct_inventory_one_item() {
         // GIVEN
-        let lines = "42\n";
+        let string = "42\n";
 
-        let expected_inventory = vec![vec![42]];
+        let expected_inventory = Inventory(vec![vec![42]]);
 
         // WHEN
-        let result = construct_inventory(lines);
+        let result = Inventory::from_string(string);
 
         // THEN
         assert_eq!(expected_inventory, result);
@@ -53,12 +59,12 @@ mod tests {
     #[test]
     fn construct_inventory_one_elf_two_items() {
         // GIVEN
-        let lines = "42\n51\n";
+        let string = "42\n51\n";
 
-        let expected_inventory = vec![vec![42, 51]];
+        let expected_inventory = Inventory(vec![vec![42, 51]]);
 
         // WHEN
-        let result = construct_inventory(lines);
+        let result = Inventory::from_string(string);
 
         // THEN
         assert_eq!(expected_inventory, result);
@@ -67,12 +73,12 @@ mod tests {
     #[test]
     fn construct_inventory_many_elf_many_items() {
         // GIVEN
-        let lines = "1\n2\n\n3\n\n4\n5\n";
+        let string = "1\n2\n\n3\n\n4\n5\n";
 
-        let expected_inventory = vec![vec![1, 2], vec![3], vec![4, 5]];
+        let expected_inventory = Inventory(vec![vec![1, 2], vec![3], vec![4, 5]]);
 
         // WHEN
-        let result = construct_inventory(lines);
+        let result = Inventory::from_string(string);
 
         // THEN
         assert_eq!(expected_inventory, result);
@@ -81,10 +87,10 @@ mod tests {
     #[test]
     fn highest_sum_one_item() {
         // GIVEN
-        let total_inventory = vec![vec![42]];
+        let inventory = Inventory(vec![vec![42]]);
 
         // WHEN
-        let result = highest_sum(&total_inventory);
+        let result = inventory.highest_sum();
 
         // THEN
         assert_eq!(42, result);
@@ -93,10 +99,10 @@ mod tests {
     #[test]
     fn highest_sum_two_elves_with_one_item_each() {
         // GIVEN
-        let total_inventory = vec![vec![42], vec![51]];
+        let inventory = Inventory(vec![vec![42], vec![51]]);
 
         // WHEN
-        let result = highest_sum(&total_inventory);
+        let result = inventory.highest_sum();
 
         // THEN
         assert_eq!(51, result);
@@ -105,10 +111,10 @@ mod tests {
     #[test]
     fn highest_sum_many_elves_many_items() {
         // GIVEN
-        let total_inventory = vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]];
+        let inventory = Inventory(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
 
         // WHEN
-        let result = highest_sum(&total_inventory);
+        let result = inventory.highest_sum();
 
         // THEN
         assert_eq!(24, result);
@@ -117,15 +123,15 @@ mod tests {
     #[test]
     fn highest_three_sum_test() {
         // GIVEN
-        let inventory = vec![
+        let inventory = Inventory(vec![
             vec![1, 2, 3],
             vec![4, 5, 6],
             vec![7, 8, 9],
             vec![10, 11, 12],
-        ];
+        ]);
 
         // WHEN
-        let result = highest_three_sum(&inventory);
+        let result = inventory.highest_three_sum();
 
         // THEN
         assert_eq!(72, result);
