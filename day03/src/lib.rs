@@ -1,3 +1,4 @@
+#![feature(iter_array_chunks)]
 use std::collections::HashSet;
 
 struct Rucksack {
@@ -32,22 +33,56 @@ impl Rucksack {
     }
 }
 
-pub struct Inventory(Vec<Rucksack>);
+struct Group([Rucksack; 3]);
+
+impl Group {
+    fn find_badge(&self) -> Result<u8, &'static str> {
+        self.0
+            .iter()
+            .map(|rucksack| rucksack.left.union(&rucksack.right).copied().collect())
+            .reduce(|acc: HashSet<u8>, rucksack| acc.intersection(&rucksack).copied().collect())
+            .ok_or("Cannot find badge: empty group")
+            .and_then(|set| set.iter().next().copied().ok_or("No badge found"))
+    }
+}
+
+pub struct Inventory(Vec<Group>);
 
 impl Inventory {
     pub fn from_string(input: impl AsRef<str>) -> Self {
-        Inventory(input.as_ref().lines().map(Rucksack::from_line).collect())
+        Inventory(
+            input
+                .as_ref()
+                .lines()
+                .map(Rucksack::from_line)
+                .array_chunks()
+                .map(Group)
+                .collect(),
+        )
     }
 
     pub fn priority(&self) -> u32 {
         self.0
             .iter()
-            .filter_map(|rucksack| {
-                rucksack
-                    .common_item()
-                    .and_then(|item| Rucksack::priority(item))
-                    .ok()
+            .map(|group| {
+                group
+                    .0
+                    .iter()
+                    .filter_map(|rucksack| {
+                        rucksack
+                            .common_item()
+                            .and_then(|item| Rucksack::priority(item))
+                            .ok()
+                    })
+                    .sum::<u32>()
             })
+            .sum()
+    }
+
+    pub fn badge_priority(&self) -> u32 {
+        self.0
+            .iter()
+            .filter_map(|group| group.find_badge().and_then(Rucksack::priority).ok())
             .sum()
     }
 }
@@ -112,6 +147,22 @@ mod tests {
     }
 
     #[test]
+    fn group_find_badge() {
+        // GIVEN
+        let input = "vJrwpWtwJgWrhcsFMMfFFhFp
+jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+PmmdzqPrVvPwwTWBwg";
+        let inventory = Inventory::from_string(input);
+        let group = &inventory.0[0];
+
+        // WHEN
+        let badge = group.find_badge();
+
+        // THEN
+        assert_eq!(Ok(b'r'), badge);
+    }
+
+    #[test]
     fn inventory_priority() {
         // GIVEN
         let input = "vJrwpWtwJgWrhcsFMMfFFhFp
@@ -120,11 +171,30 @@ PmmdzqPrVvPwwTWBwg
 wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
 ttgJtRGJQctTZtZT
 CrZsJsPPZsGzwwsLwLmpwMDw";
-
-        // WHEN
         let inventory = Inventory::from_string(input);
 
+        // WHEN
+        let priority = inventory.priority();
+
         // THEN
-        assert_eq!(157, inventory.priority());
+        assert_eq!(157, priority);
+    }
+
+    #[test]
+    fn inventory_badge_priority() {
+        // GIVEN
+        let input = "vJrwpWtwJgWrhcsFMMfFFhFp
+jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+PmmdzqPrVvPwwTWBwg
+wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
+ttgJtRGJQctTZtZT
+CrZsJsPPZsGzwwsLwLmpwMDw";
+        let inventory = Inventory::from_string(input);
+
+        // WHEN
+        let badge_priority = inventory.badge_priority();
+
+        // THEN
+        assert_eq!(70, badge_priority);
     }
 }

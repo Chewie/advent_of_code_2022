@@ -7,4 +7,7 @@ fn main() {
     let inventory = day03::Inventory::from_string(input);
     let priority = inventory.priority();
     println!("Inventory priority: {priority}");
+
+    let badge_priority = inventory.badge_priority();
+    println!("Inventory badge priority: {badge_priority}");
 }
