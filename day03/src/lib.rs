@@ -62,28 +62,27 @@ impl Inventory {
         )
     }
 
-    pub fn priority(&self) -> u32 {
+    pub fn priority(&self) -> Result<u32, &'static str> {
         self.0
             .iter()
             .map(|group| {
                 group
                     .0
                     .iter()
-                    .filter_map(|rucksack| {
+                    .map(|rucksack| {
                         rucksack
                             .common_item()
                             .and_then(|item| Rucksack::priority(item))
-                            .ok()
                     })
-                    .sum::<u32>()
+                    .sum::<Result<u32, &'static str>>()
             })
             .sum()
     }
 
-    pub fn badge_priority(&self) -> u32 {
+    pub fn badge_priority(&self) -> Result<u32, &'static str> {
         self.0
             .iter()
-            .filter_map(|group| group.find_badge().and_then(Rucksack::priority).ok())
+            .map(|group| group.find_badge().and_then(Rucksack::priority))
             .sum()
     }
 }
@@ -178,7 +177,7 @@ CrZsJsPPZsGzwwsLwLmpwMDw";
         let priority = inventory.priority();
 
         // THEN
-        assert_eq!(157, priority);
+        assert_eq!(Ok(157), priority);
     }
 
     #[test]
@@ -196,6 +195,6 @@ CrZsJsPPZsGzwwsLwLmpwMDw";
         let badge_priority = inventory.badge_priority();
 
         // THEN
-        assert_eq!(70, badge_priority);
+        assert_eq!(Ok(70), badge_priority);
     }
 }
