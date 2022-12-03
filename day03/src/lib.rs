@@ -69,11 +69,7 @@ impl Inventory {
                 group
                     .0
                     .iter()
-                    .map(|rucksack| {
-                        rucksack
-                            .common_item()
-                            .and_then(|item| Rucksack::priority(item))
-                    })
+                    .map(|rucksack| rucksack.common_item().and_then(Rucksack::priority))
                     .sum::<Result<u32, &'static str>>()
             })
             .sum()
