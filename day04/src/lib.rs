@@ -6,10 +6,6 @@ struct Assignment {
 }
 
 impl Assignment {
-    fn fully_contains(&self, other: &Self) -> bool {
-        self.low <= other.low && self.high >= other.high
-    }
-
     fn from_string(input: impl AsRef<str>) -> Result<Self> {
         let (low, high) = input
             .as_ref()
@@ -20,6 +16,10 @@ impl Assignment {
             high: high.parse()?,
         })
     }
+
+    fn fully_contains(&self, other: &Self) -> bool {
+        self.low <= other.low && self.high >= other.high
+    }
 }
 
 struct Pair {
@@ -28,10 +28,6 @@ struct Pair {
 }
 
 impl Pair {
-    fn either_contains_the_other(&self) -> bool {
-        self.left.fully_contains(&self.right) || self.right.fully_contains(&self.left)
-    }
-
     fn from_string(input: impl AsRef<str>) -> Result<Self> {
         let (left, right) = input
             .as_ref()
@@ -41,6 +37,14 @@ impl Pair {
             left: Assignment::from_string(left)?,
             right: Assignment::from_string(right)?,
         })
+    }
+
+    fn either_contains_the_other(&self) -> bool {
+        self.left.fully_contains(&self.right) || self.right.fully_contains(&self.left)
+    }
+
+    fn has_overlap(&self) -> bool {
+        self.left.high >= self.right.low && self.left.low <= self.right.high
     }
 }
 
@@ -62,6 +66,10 @@ impl WorkSheet {
             .iter()
             .filter(|pair| pair.either_contains_the_other())
             .count()
+    }
+
+    pub fn count_overlaps(&self) -> usize {
+        self.0.iter().filter(|pair| pair.has_overlap()).count()
     }
 }
 
@@ -126,5 +134,24 @@ mod tests {
 
         // THEN
         assert_eq!(2, result);
+    }
+
+    #[test]
+    fn worksheet_count_overlaps() {
+        // GIVEN
+        let input = "2-4,6-8
+2-3,4-5
+5-7,7-9
+2-8,3-7
+6-6,4-6
+2-6,4-8
+7-9,5-6";
+        let worksheet = WorkSheet::from_string(input).unwrap();
+
+        // WHEN
+        let result = worksheet.count_overlaps();
+
+        // THEN
+        assert_eq!(4, result);
     }
 }
