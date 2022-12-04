@@ -4,10 +4,9 @@ type Elf = Vec<u32>;
 pub struct Inventory(Vec<Elf>);
 
 impl Inventory {
-    pub fn from_string<T: AsRef<str>>(string: T) -> Inventory {
+    pub fn from_string(string: &str) -> Inventory {
         Inventory(
             string
-                .as_ref()
                 .trim()
                 .split("\n\n")
                 .map(|single_elf| {

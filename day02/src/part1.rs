@@ -67,10 +67,9 @@ impl Round {
 pub struct Strategy(Vec<Round>);
 
 impl Strategy {
-    pub fn from_string(input: impl AsRef<str>) -> Strategy {
+    pub fn from_string(input: &str) -> Strategy {
         Strategy(
             input
-                .as_ref()
                 .lines()
                 .filter_map(|line| Round::from_line(line).ok())
                 .collect(),

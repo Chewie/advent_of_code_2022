@@ -6,11 +6,8 @@ struct Assignment {
 }
 
 impl Assignment {
-    fn from_string(input: impl AsRef<str>) -> Result<Self> {
-        let (low, high) = input
-            .as_ref()
-            .split_once("-")
-            .ok_or("Cannot construct assignment")?;
+    fn from_string(input: &str) -> Result<Self> {
+        let (low, high) = input.split_once("-").ok_or("Cannot construct assignment")?;
         Ok(Assignment {
             low: low.parse()?,
             high: high.parse()?,
@@ -28,11 +25,8 @@ struct Pair {
 }
 
 impl Pair {
-    fn from_string(input: impl AsRef<str>) -> Result<Self> {
-        let (left, right) = input
-            .as_ref()
-            .split_once(",")
-            .ok_or("Cannot construct pair")?;
+    fn from_string(input: &str) -> Result<Self> {
+        let (left, right) = input.split_once(",").ok_or("Cannot construct pair")?;
         Ok(Pair {
             left: Assignment::from_string(left)?,
             right: Assignment::from_string(right)?,
@@ -51,10 +45,9 @@ impl Pair {
 pub struct WorkSheet(Vec<Pair>);
 
 impl WorkSheet {
-    pub fn from_string(input: impl AsRef<str>) -> Result<Self> {
+    pub fn from_string(input: &str) -> Result<Self> {
         Ok(WorkSheet(
             input
-                .as_ref()
                 .lines()
                 .map(Pair::from_string)
                 .collect::<Result<Vec<_>>>()?,

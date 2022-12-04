@@ -7,8 +7,8 @@ struct Rucksack {
 }
 
 impl Rucksack {
-    fn from_line(line: impl AsRef<str>) -> Self {
-        let chars = line.as_ref().as_bytes();
+    fn from_line(line: &str) -> Self {
+        let chars = line.as_bytes();
         let len = chars.len();
         let (left, right) = chars.split_at(len / 2);
         Rucksack {
@@ -50,10 +50,9 @@ impl Group {
 pub struct Inventory(Vec<Group>);
 
 impl Inventory {
-    pub fn from_string(input: impl AsRef<str>) -> Self {
+    pub fn from_string(input: &str) -> Self {
         Inventory(
             input
-                .as_ref()
                 .lines()
                 .map(Rucksack::from_line)
                 .array_chunks()
