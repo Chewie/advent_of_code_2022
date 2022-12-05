@@ -7,7 +7,7 @@ struct Assignment {
 
 impl Assignment {
     fn from_string(input: &str) -> Result<Self> {
-        let (low, high) = input.split_once("-").ok_or("Cannot construct assignment")?;
+        let (low, high) = input.split_once('-').ok_or("Cannot construct assignment")?;
         Ok(Assignment {
             low: low.parse()?,
             high: high.parse()?,
@@ -26,7 +26,7 @@ struct Pair {
 
 impl Pair {
     fn from_string(input: &str) -> Result<Self> {
-        let (left, right) = input.split_once(",").ok_or("Cannot construct pair")?;
+        let (left, right) = input.split_once(',').ok_or("Cannot construct pair")?;
         Ok(Pair {
             left: Assignment::from_string(left)?,
             right: Assignment::from_string(right)?,

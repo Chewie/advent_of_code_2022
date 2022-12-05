@@ -1,6 +1,6 @@
 type Elf = Vec<u32>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Inventory(Vec<Elf>);
 
 impl Inventory {
@@ -11,7 +11,7 @@ impl Inventory {
                 .split("\n\n")
                 .map(|single_elf| {
                     single_elf
-                        .split("\n")
+                        .split('\n')
                         .map(|item| item.parse().unwrap())
                         .collect()
                 })

@@ -30,7 +30,7 @@ struct Round {
 impl Round {
     fn from_line(line: &str) -> Result<Self, &'static str> {
         let (opponent, your) = line
-            .split_once(" ")
+            .split_once(' ')
             .ok_or("Cannot create Round: unable to split")?;
         match (opponent.parse(), your.parse()) {
             (Ok(opponent_move), Ok(your_move)) => Ok(Round {
