@@ -9,4 +9,10 @@ fn main() {
     let top_row = puzzle.top_row();
 
     println!("Top row: {top_row}");
+
+    let mut puzzle2 = day05::Puzzle::from_string(&input);
+    puzzle2.apply_commands_stacked();
+    let top_row = puzzle2.top_row();
+
+    println!("Top row (stacked): {top_row}");
 }

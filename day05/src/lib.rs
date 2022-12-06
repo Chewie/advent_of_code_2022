@@ -76,6 +76,16 @@ impl Puzzle {
         }
     }
 
+    pub fn apply_commands_stacked(&mut self) {
+        for command in &self.commands {
+            let src = &mut self.dock.0[command.src - 1];
+            let stack = src.split_off(src.len() - command.amount);
+
+            let dst = &mut self.dock.0[command.dst - 1];
+            dst.extend(stack);
+        }
+    }
+
     pub fn top_row(&self) -> String {
         String::from_utf8(
             self.dock
@@ -165,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn puzzle_top_row() {
+    fn puzzle_top_row_with_reverse() {
         // GIVEN
         let input = "
         [F] [Q]         [Q]        
@@ -183,5 +193,26 @@ move 2 from 7 to 2";
 
         // THEN
         assert_eq!("FSQQDD", top_row);
+    }
+
+    #[test]
+    fn puzzle_top_row_without_reverse() {
+        // GIVEN
+        let input = "
+        [F] [Q]         [Q]        
+[B]     [Q] [V] [D]     [S]        
+[S] [P] [T] [R] [M]     [D]        
+ 1   2   3   4   5   6   7   8   9 
+
+move 1 from 3 to 1
+move 2 from 7 to 2";
+
+        // WHEN
+        let mut puzzle = Puzzle::from_string(input);
+        puzzle.apply_commands_stacked();
+        let top_row = puzzle.top_row();
+
+        // THEN
+        assert_eq!("FQQQDD", top_row);
     }
 }
