@@ -28,15 +28,8 @@ impl std::ops::AddAssign for Point {
     }
 }
 
-enum Dir {
-    L,
-    U,
-    R,
-    D,
-}
-
 struct Command {
-    direction: Dir,
+    direction: Point,
     amount: usize,
 }
 
@@ -44,10 +37,10 @@ impl Command {
     fn new(line: &str) -> Result<Self> {
         let (dir, amount) = line.split_once(' ').ok_or("Cannot split")?;
         let dir = match dir {
-            "L" => Dir::L,
-            "U" => Dir::U,
-            "R" => Dir::R,
-            "D" => Dir::D,
+            "L" => Point { x: -1, y: 0 },
+            "U" => Point { x: 0, y: 1 },
+            "R" => Point { x: 1, y: 0 },
+            "D" => Point { x: 0, y: -1 },
             _ => return Err(Box::from("unknown command")),
         };
         Ok(Command {
@@ -75,13 +68,7 @@ impl Rope {
 
         for command in commands {
             for _ in 0..command.amount {
-                let dir_vec = match command.direction {
-                    Dir::L => Point { x: -1, y: 0 },
-                    Dir::U => Point { x: 0, y: 1 },
-                    Dir::R => Point { x: 1, y: 0 },
-                    Dir::D => Point { x: 0, y: -1 },
-                };
-                self.knots[0] += dir_vec;
+                self.knots[0] += command.direction;
                 self.update_knots();
             }
         }
@@ -95,7 +82,7 @@ impl Rope {
     fn update_knots(&mut self) {
         for i in 1..self.knots.len() {
             let delta = self.knots[i - 1] - self.knots[i];
-            if std::cmp::max(delta.x.abs(), delta.y.abs()) > 1 {
+            if delta.x.abs() > 1 || delta.y.abs() > 1 {
                 let dir_vec = match (delta.x, delta.y) {
                     (2, 0) => Point { x: 1, y: 0 },
                     (-2, 0) => Point { x: -1, y: 0 },
