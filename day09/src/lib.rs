@@ -58,22 +58,14 @@ impl Command {
 }
 
 pub struct Rope {
-    head: Point,
-    tail: Point,
+    knots: Vec<Point>,
     visited_by_tail: HashSet<Point>,
 }
 
-impl Default for Rope {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Rope {
-    pub fn new() -> Self {
+    pub fn new(size: usize) -> Self {
         Rope {
-            head: Point { x: 0, y: 0 },
-            tail: Point { x: 0, y: 0 },
+            knots: vec![Point { x: 0, y: 0 }; size],
             visited_by_tail: HashSet::from([Point { x: 0, y: 0 }]),
         }
     }
@@ -89,8 +81,8 @@ impl Rope {
                     Dir::R => Point { x: 1, y: 0 },
                     Dir::D => Point { x: 0, y: -1 },
                 };
-                self.head += dir_vec;
-                self.update_tail();
+                self.knots[0] += dir_vec;
+                self.update_knots();
             }
         }
         Ok(())
@@ -100,24 +92,25 @@ impl Rope {
         self.visited_by_tail.len()
     }
 
-    fn update_tail(&mut self) {
-        let delta = self.head - self.tail;
-
-        if std::cmp::max(delta.x.abs(), delta.y.abs()) > 1 {
-            let tail_dir_vec = match (delta.x, delta.y) {
-                (2, 0) => Point { x: 1, y: 0 },
-                (-2, 0) => Point { x: -1, y: 0 },
-                (0, 2) => Point { x: 0, y: 1 },
-                (0, -2) => Point { x: 0, y: -1 },
-                (2, 1) | (1, 2) => Point { x: 1, y: 1 },
-                (2, -1) | (1, -2) => Point { x: 1, y: -1 },
-                (-2, 1) | (-1, 2) => Point { x: -1, y: 1 },
-                (-2, -1) | (-1, -2) => Point { x: -1, y: -1 },
-                _ => unreachable!(),
-            };
-            self.tail += tail_dir_vec;
-            self.visited_by_tail.insert(self.tail);
+    fn update_knots(&mut self) {
+        for i in 1..self.knots.len() {
+            let delta = self.knots[i - 1] - self.knots[i];
+            if std::cmp::max(delta.x.abs(), delta.y.abs()) > 1 {
+                let dir_vec = match (delta.x, delta.y) {
+                    (2, 0) => Point { x: 1, y: 0 },
+                    (-2, 0) => Point { x: -1, y: 0 },
+                    (0, 2) => Point { x: 0, y: 1 },
+                    (0, -2) => Point { x: 0, y: -1 },
+                    (2, 1) | (1, 2) | (2, 2) => Point { x: 1, y: 1 },
+                    (2, -1) | (1, -2) | (2, -2) => Point { x: 1, y: -1 },
+                    (-2, 1) | (-1, 2) | (-2, 2) => Point { x: -1, y: 1 },
+                    (-2, -1) | (-1, -2) | (-2, -2) => Point { x: -1, y: -1 },
+                    (x, y) => unreachable!("({x}, {y})"),
+                };
+                self.knots[i] += dir_vec;
+            }
         }
+        self.visited_by_tail.insert(*self.knots.last().unwrap());
     }
 }
 
@@ -127,7 +120,7 @@ mod tests {
     use indoc::indoc;
 
     #[test]
-    fn unique_tail_positions() {
+    fn rope2_unique_tail_positions() {
         // GIVEN
         let input = indoc! {"
             R 4
@@ -139,12 +132,56 @@ mod tests {
             L 5
             R 2
         "};
-        let mut rope = Rope::new();
+        let mut rope = Rope::new(2);
 
         // WHEN
         rope.apply_from_string(input).unwrap();
 
         // THEN
         assert_eq!(13, rope.unique_tail_positions());
+    }
+
+    #[test]
+    fn rope10_unique_tail_positions() {
+        // GIVEN
+        let input = indoc! {"
+            R 4
+            U 4
+            L 3
+            D 1
+            R 4
+            D 1
+            L 5
+            R 2
+        "};
+        let mut rope = Rope::new(10);
+
+        // WHEN
+        rope.apply_from_string(input).unwrap();
+
+        // THEN
+        assert_eq!(1, rope.unique_tail_positions());
+    }
+
+    #[test]
+    fn rope10_unique_tail_positions_large() {
+        // GIVEN
+        let input = indoc! {"
+            R 5
+            U 8
+            L 8
+            D 3
+            R 17
+            D 10
+            L 25
+            U 20
+        "};
+        let mut rope = Rope::new(10);
+
+        // WHEN
+        rope.apply_from_string(input).unwrap();
+
+        // THEN
+        assert_eq!(36, rope.unique_tail_positions());
     }
 }
