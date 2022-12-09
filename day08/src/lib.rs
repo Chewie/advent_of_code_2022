@@ -54,9 +54,7 @@ impl Forest {
 
     fn is_visible_from_left(&self, row: usize, col: usize) -> bool {
         let tree = self.0[col][row];
-        if row == 0 {
-            return true;
-        }
+
         let mut i = row;
         while i > 0 {
             if self.0[col][i - 1] >= tree {
@@ -69,9 +67,7 @@ impl Forest {
 
     fn is_visible_from_right(&self, row: usize, col: usize) -> bool {
         let tree = self.0[col][row];
-        if row == self.0.len() - 1 {
-            return true;
-        }
+
         let mut i = row;
         while i < self.0.len() - 1 {
             if self.0[col][i + 1] >= tree {
@@ -84,9 +80,7 @@ impl Forest {
 
     fn is_visible_from_top(&self, row: usize, col: usize) -> bool {
         let tree = self.0[col][row];
-        if col == 0 {
-            return true;
-        }
+
         let mut j = col;
         while j > 0 {
             if self.0[j - 1][row] >= tree {
@@ -99,9 +93,7 @@ impl Forest {
 
     fn is_visible_from_bottom(&self, row: usize, col: usize) -> bool {
         let tree = self.0[col][row];
-        if col == self.0.len() - 1 {
-            return true;
-        }
+
         let mut j = col;
         while j < self.0.len() - 1 {
             if self.0[j + 1][row] >= tree {
@@ -114,6 +106,7 @@ impl Forest {
 
     fn viewing_distance_left(&self, row: usize, col: usize) -> usize {
         let tree = self.0[col][row];
+
         let mut result = 0;
         let mut i = row;
         while i > 0 {
@@ -128,6 +121,7 @@ impl Forest {
 
     fn viewing_distance_right(&self, row: usize, col: usize) -> usize {
         let tree = self.0[col][row];
+
         let mut result = 0;
         let mut i = row;
         while i < self.0.len() - 1 {
@@ -142,6 +136,7 @@ impl Forest {
 
     fn viewing_distance_top(&self, row: usize, col: usize) -> usize {
         let tree = self.0[col][row];
+
         let mut result = 0;
         let mut j = col;
         while j > 0 {
@@ -156,6 +151,7 @@ impl Forest {
 
     fn viewing_distance_bottom(&self, row: usize, col: usize) -> usize {
         let tree = self.0[col][row];
+
         let mut result = 0;
         let mut j = col;
         while j < self.0.len() - 1 {
