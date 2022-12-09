@@ -14,29 +14,52 @@ impl Forest {
         self.0
             .iter()
             .enumerate()
-            .map(|(i, row)| {
+            .map(|(j, row)| {
                 row.iter()
                     .enumerate()
-                    .filter(|(j, tree)| self.is_visible(**tree, i, *j))
+                    .filter(|(i, _)| self.is_visible(*i, j))
                     .count()
             })
             .sum()
     }
 
-    fn is_visible(&self, tree: u32, row: usize, col: usize) -> bool {
-        self.is_visible_from_left(tree, row, col)
-            || self.is_visible_from_right(tree, row, col)
-            || self.is_visible_from_top(tree, row, col)
-            || self.is_visible_from_bottom(tree, row, col)
+    pub fn highest_scenic_score(&self) -> usize {
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(j, row)| {
+                row.iter()
+                    .enumerate()
+                    .map(|(i, _)| self.scenic_score(i, j))
+                    .max()
+                    .unwrap()
+            })
+            .max()
+            .unwrap()
     }
 
-    fn is_visible_from_left(&self, tree: u32, row: usize, col: usize) -> bool {
+    fn is_visible(&self, row: usize, col: usize) -> bool {
+        self.is_visible_from_left(row, col)
+            || self.is_visible_from_right(row, col)
+            || self.is_visible_from_top(row, col)
+            || self.is_visible_from_bottom(row, col)
+    }
+
+    fn scenic_score(&self, row: usize, col: usize) -> usize {
+        self.viewing_distance_left(row, col)
+            * self.viewing_distance_right(row, col)
+            * self.viewing_distance_top(row, col)
+            * self.viewing_distance_bottom(row, col)
+    }
+
+    fn is_visible_from_left(&self, row: usize, col: usize) -> bool {
+        let tree = self.0[col][row];
         if row == 0 {
             return true;
         }
         let mut i = row;
         while i > 0 {
-            if self.0[i - 1][col] >= tree {
+            if self.0[col][i - 1] >= tree {
                 return false;
             }
             i -= 1;
@@ -44,13 +67,14 @@ impl Forest {
         true
     }
 
-    fn is_visible_from_right(&self, tree: u32, row: usize, col: usize) -> bool {
+    fn is_visible_from_right(&self, row: usize, col: usize) -> bool {
+        let tree = self.0[col][row];
         if row == self.0.len() - 1 {
             return true;
         }
         let mut i = row;
         while i < self.0.len() - 1 {
-            if self.0[i + 1][col] >= tree {
+            if self.0[col][i + 1] >= tree {
                 return false;
             }
             i += 1;
@@ -58,13 +82,14 @@ impl Forest {
         true
     }
 
-    fn is_visible_from_top(&self, tree: u32, row: usize, col: usize) -> bool {
+    fn is_visible_from_top(&self, row: usize, col: usize) -> bool {
+        let tree = self.0[col][row];
         if col == 0 {
             return true;
         }
         let mut j = col;
         while j > 0 {
-            if self.0[row][j - 1] >= tree {
+            if self.0[j - 1][row] >= tree {
                 return false;
             }
             j -= 1;
@@ -72,18 +97,75 @@ impl Forest {
         true
     }
 
-    fn is_visible_from_bottom(&self, tree: u32, row: usize, col: usize) -> bool {
+    fn is_visible_from_bottom(&self, row: usize, col: usize) -> bool {
+        let tree = self.0[col][row];
         if col == self.0.len() - 1 {
             return true;
         }
         let mut j = col;
         while j < self.0.len() - 1 {
-            if self.0[row][j + 1] >= tree {
+            if self.0[j + 1][row] >= tree {
                 return false;
             }
             j += 1;
         }
         true
+    }
+
+    fn viewing_distance_left(&self, row: usize, col: usize) -> usize {
+        let tree = self.0[col][row];
+        let mut result = 0;
+        let mut i = row;
+        while i > 0 {
+            result += 1;
+            if self.0[col][i - 1] >= tree {
+                break;
+            }
+            i -= 1;
+        }
+        result
+    }
+
+    fn viewing_distance_right(&self, row: usize, col: usize) -> usize {
+        let tree = self.0[col][row];
+        let mut result = 0;
+        let mut i = row;
+        while i < self.0.len() - 1 {
+            result += 1;
+            if self.0[col][i + 1] >= tree {
+                break;
+            }
+            i += 1;
+        }
+        result
+    }
+
+    fn viewing_distance_top(&self, row: usize, col: usize) -> usize {
+        let tree = self.0[col][row];
+        let mut result = 0;
+        let mut j = col;
+        while j > 0 {
+            result += 1;
+            if self.0[j - 1][row] >= tree {
+                break;
+            }
+            j -= 1;
+        }
+        result
+    }
+
+    fn viewing_distance_bottom(&self, row: usize, col: usize) -> usize {
+        let tree = self.0[col][row];
+        let mut result = 0;
+        let mut j = col;
+        while j < self.0.len() - 1 {
+            result += 1;
+            if self.0[j + 1][row] >= tree {
+                break;
+            }
+            j += 1;
+        }
+        result
     }
 }
 
@@ -110,5 +192,185 @@ mod tests {
 
         // THEN
         assert_eq!(21, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_left() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_left(2, 1);
+
+        // THEN
+        assert_eq!(1, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_left2() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_left(2, 3);
+
+        // THEN
+        assert_eq!(2, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_right() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_right(2, 1);
+
+        // THEN
+        assert_eq!(2, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_right2() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_right(2, 3);
+
+        // THEN
+        assert_eq!(2, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_top() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_top(2, 1);
+
+        // THEN
+        assert_eq!(1, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_top2() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_top(2, 3);
+
+        // THEN
+        assert_eq!(2, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_bottom() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_bottom(2, 1);
+
+        // THEN
+        assert_eq!(2, num);
+    }
+
+    #[test]
+    fn forest_viewing_distance_bottom2() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.viewing_distance_bottom(2, 3);
+
+        // THEN
+        assert_eq!(1, num);
+    }
+
+    #[test]
+    fn forest_highest_scenic_score() {
+        // GIVEN
+        let input = indoc! {"
+        30373
+        25512
+        65332
+        33549
+        35390
+    "};
+
+        let forest = Forest::from_string(input);
+
+        // WHEN
+        let num = forest.highest_scenic_score();
+
+        // THEN
+        assert_eq!(8, num);
     }
 }
