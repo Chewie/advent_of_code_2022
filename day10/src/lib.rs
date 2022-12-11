@@ -17,10 +17,6 @@ impl Cpu {
         input.lines().for_each(|line| self.run_command(line));
     }
 
-    pub fn x_history(&self) -> &Vec<i32> {
-        &self.history
-    }
-
     pub fn sum_of_interesting_signal_strengths(&self) -> i32 {
         [20, 60, 100, 140, 180, 220]
             .iter()
@@ -70,6 +66,12 @@ mod tests {
     use indoc::indoc;
     use pretty_assertions::assert_eq;
 
+    impl Cpu {
+        fn x_history(&self) -> &[i32] {
+            &self.history
+        }
+    }
+
     #[test]
     fn cpu_x_history() {
         // GIVEN
@@ -85,7 +87,7 @@ mod tests {
         cpu.run(input);
 
         // THEN
-        assert_eq!(vec![0, 1, 1, 1, 4, 4, -1], *cpu.x_history());
+        assert_eq!(vec![0, 1, 1, 1, 4, 4, -1], cpu.x_history());
     }
 
     #[test]
