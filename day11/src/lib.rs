@@ -8,13 +8,13 @@ use nom::{
     IResult,
 };
 
-pub(crate) struct Monkey {
-    items: Vec<u32>,
-    operation: Box<dyn Fn(u32) -> u32>,
-    divisible_by: u32,
-    dest_if_true: u32,
-    dest_if_false: u32,
-    inspect_count: u32,
+struct Monkey {
+    items: Vec<usize>,
+    operation: Box<dyn Fn(usize) -> usize>,
+    divisible_by: usize,
+    dest_if_true: usize,
+    dest_if_false: usize,
+    inspect_count: usize,
 }
 
 use std::{collections::BinaryHeap, fmt};
@@ -22,6 +22,7 @@ impl fmt::Debug for Monkey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Monkey")
             .field("items", &self.items)
+            .field("inspect count", &self.inspect_count)
             .finish()
     }
 }
@@ -48,7 +49,7 @@ impl Monkey {
         ))
     }
 
-    fn number(input: &str) -> IResult<&str, u32> {
+    fn number(input: &str) -> IResult<&str, usize> {
         map_res(digit1, |num: &str| num.parse())(input)
     }
 
@@ -57,12 +58,12 @@ impl Monkey {
         Ok((input, ()))
     }
 
-    fn monkey_starting_items(input: &str) -> IResult<&str, Vec<u32>> {
+    fn monkey_starting_items(input: &str) -> IResult<&str, Vec<usize>> {
         let (input, _) = tag("  Starting items: ")(input)?;
         terminated(separated_list1(tag(", "), Self::number), tag("\n"))(input)
     }
 
-    fn monkey_operation(input: &str) -> IResult<&str, impl Fn(u32) -> u32> {
+    fn monkey_operation(input: &str) -> IResult<&str, impl Fn(usize) -> usize> {
         let (input, _) = tag("  Operation: new = old ")(input)?;
         let (input, operator) = one_of("+*")(input)?;
         let operation = match operator {
@@ -79,7 +80,7 @@ impl Monkey {
         }))
     }
 
-    fn monkey_division_test(input: &str) -> IResult<&str, (u32, u32, u32)> {
+    fn monkey_division_test(input: &str) -> IResult<&str, (usize, usize, usize)> {
         let (input, _) = tag("  Test: divisible by ")(input)?;
         let (input, divisible_by) = terminated(Self::number, tag("\n"))(input)?;
         let (input, _) = tag("    If true: throw to monkey ")(input)?;
@@ -94,35 +95,40 @@ impl Monkey {
 #[derive(Debug)]
 pub struct Puzzle {
     monkeys: Vec<Monkey>,
+    common_divisor: usize,
 }
 
 impl Puzzle {
     pub fn from_string(input: &str) -> IResult<&str, Self> {
         let (input, monkeys) = separated_list1(tag("\n"), Monkey::from_string)(input)?;
-        Ok((input, Puzzle { monkeys }))
+        let common_divisor = monkeys.iter().map(|monkey| monkey.divisible_by).product();
+        Ok((input, Puzzle { monkeys, common_divisor }))
     }
 
-    pub fn monkey_business(&mut self) -> u32 {
-        for _ in 0..20 {
-            self.round()
+    pub fn monkey_business(&mut self, num_rounds: usize, ridiculous: bool) -> usize {
+        for _ in 0..num_rounds {
+            self.round(ridiculous)
         }
 
         let mut heap = self
             .monkeys
             .iter()
             .map(|monkey| monkey.inspect_count)
-            .collect::<BinaryHeap<u32>>();
+            .collect::<BinaryHeap<usize>>();
 
         let iter = std::iter::from_fn(|| heap.pop());
         iter.take(2).product()
     }
 
-    fn round(&mut self) {
+    fn round(&mut self, ridiculous: bool) {
         for monkey_index in 0..self.monkeys.len() {
             for i in 0..self.monkeys[monkey_index].items.len() {
                 self.monkeys[monkey_index].inspect_count += 1;
-                let worry_level =
-                    (self.monkeys[monkey_index].operation)(self.monkeys[monkey_index].items[i]) / 3;
+                let worry_level = if ridiculous {
+                    (self.monkeys[monkey_index].operation)(self.monkeys[monkey_index].items[i]) % self.common_divisor
+                } else {
+                    (self.monkeys[monkey_index].operation)(self.monkeys[monkey_index].items[i]) / 3
+                };
                 let dest = if worry_level % self.monkeys[monkey_index].divisible_by == 0 {
                     self.monkeys[monkey_index].dest_if_true
                 } else {
@@ -234,10 +240,52 @@ mod tests {
 
         let (remainder, mut puzzle) = Puzzle::from_string(input).unwrap();
         // WHEN
-        let result = puzzle.monkey_business();
+        let result = puzzle.monkey_business(20, false);
 
         // THEN
         assert_eq!("", remainder);
         assert_eq!(10605, result);
+    }
+
+    #[test]
+    fn monkey_business_ridiculous() {
+        // GIVEN
+        let input = indoc! {"
+            Monkey 0:
+              Starting items: 79, 98
+              Operation: new = old * 19
+              Test: divisible by 23
+                If true: throw to monkey 2
+                If false: throw to monkey 3
+
+            Monkey 1:
+              Starting items: 54, 65, 75, 74
+              Operation: new = old + 6
+              Test: divisible by 19
+                If true: throw to monkey 2
+                If false: throw to monkey 0
+
+            Monkey 2:
+              Starting items: 79, 60, 97
+              Operation: new = old * old
+              Test: divisible by 13
+                If true: throw to monkey 1
+                If false: throw to monkey 3
+
+            Monkey 3:
+              Starting items: 74
+              Operation: new = old + 3
+              Test: divisible by 17
+                If true: throw to monkey 0
+                If false: throw to monkey 1
+            "};
+
+        let (remainder, mut puzzle) = Puzzle::from_string(input).unwrap();
+        // WHEN
+        let result = puzzle.monkey_business(10000, true);
+
+        // THEN
+        assert_eq!("", remainder);
+        assert_eq!(2713310158, result);
     }
 }
