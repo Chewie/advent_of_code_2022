@@ -1,63 +1,68 @@
-pub struct Forest(Vec<Vec<u32>>);
+pub struct Forest {
+    width: usize,
+    height: usize,
+    grid: Vec<u32>,
+}
 
 impl Forest {
     pub fn from_string(input: &str) -> Self {
-        Forest(
-            input
-                .lines()
-                .map(|line| line.chars().flat_map(|tree| tree.to_digit(10)).collect())
-                .collect(),
-        )
+        let width = input.chars().position(|x| x == '\n').unwrap();
+        let grid : Vec<u32> = input
+            .chars()
+            .filter(|x| *x != '\n')
+            .flat_map(|tree| tree.to_digit(10))
+            .collect();
+        let height = grid.len() / width;
+        Forest { width, grid, height}
     }
 
     pub fn number_of_visibles(&self) -> usize {
-        self.0
-            .iter()
-            .enumerate()
-            .map(|(j, row)| {
-                row.iter()
-                    .enumerate()
-                    .filter(|(i, _)| self.is_visible(*i, j))
-                    .count()
-            })
-            .sum()
+        (0..self.grid.len())
+            .filter(|idx| self.is_visible(*idx))
+            .count()
     }
 
     pub fn highest_scenic_score(&self) -> usize {
-        self.0
-            .iter()
-            .enumerate()
-            .map(|(j, row)| {
-                row.iter()
-                    .enumerate()
-                    .map(|(i, _)| self.scenic_score(i, j))
-                    .max()
-                    .unwrap()
-            })
+        (0..self.grid.len())
+            .map(|idx| self.scenic_score(idx))
             .max()
             .unwrap()
     }
 
-    fn is_visible(&self, row: usize, col: usize) -> bool {
-        self.is_visible_from_left(row, col)
-            || self.is_visible_from_right(row, col)
-            || self.is_visible_from_top(row, col)
-            || self.is_visible_from_bottom(row, col)
+    fn idx_to_coords(&self, idx: usize) -> (usize, usize) {
+        (idx % self.width, idx / self.width)
     }
 
-    fn scenic_score(&self, row: usize, col: usize) -> usize {
-        self.viewing_distance_left(row, col)
-            * self.viewing_distance_right(row, col)
-            * self.viewing_distance_top(row, col)
-            * self.viewing_distance_bottom(row, col)
+    fn coords_to_idx(&self, i: usize, j: usize) -> usize {
+        i + j * self.width
     }
 
-    fn is_visible_from_left(&self, row: usize, col: usize) -> bool {
-        let tree = self.0[col][row];
+    fn get(&self, i: usize, j: usize) -> u32 {
+        self.grid[self.coords_to_idx(i, j)]
+    }
 
-        let mut i = row;
+    fn is_visible(&self, idx: usize) -> bool {
+        let (i, j) = self.idx_to_coords(idx);
+        self.is_visible_from_left(i, j)
+            || self.is_visible_from_right(i, j)
+            || self.is_visible_from_top(i, j)
+            || self.is_visible_from_bottom(i, j)
+    }
+
+    fn scenic_score(&self, idx: usize) -> usize {
+        let (i, j) = self.idx_to_coords(idx);
+        self.viewing_distance_left(i, j)
+            * self.viewing_distance_right(i, j)
+            * self.viewing_distance_top(i, j)
+            * self.viewing_distance_bottom(i, j)
+    }
+
+
+    fn is_visible_from_left(&self, mut i: usize, j: usize) -> bool {
+        let tree = self.get(i, j);
+
         while i > 0 {
-            if self.0[col][i - 1] >= tree {
+            if self.get(i - 1, j) >= tree {
                 return false;
             }
             i -= 1;
@@ -65,12 +70,11 @@ impl Forest {
         true
     }
 
-    fn is_visible_from_right(&self, row: usize, col: usize) -> bool {
-        let tree = self.0[col][row];
+    fn is_visible_from_right(&self, mut i: usize, j: usize) -> bool {
+        let tree = self.get(i, j);
 
-        let mut i = row;
-        while i < self.0.len() - 1 {
-            if self.0[col][i + 1] >= tree {
+        while i < self.width - 1 {
+            if self.get(i + 1, j) >= tree {
                 return false;
             }
             i += 1;
@@ -78,12 +82,11 @@ impl Forest {
         true
     }
 
-    fn is_visible_from_top(&self, row: usize, col: usize) -> bool {
-        let tree = self.0[col][row];
+    fn is_visible_from_top(&self, i: usize, mut j: usize) -> bool {
+        let tree = self.get(i, j);
 
-        let mut j = col;
         while j > 0 {
-            if self.0[j - 1][row] >= tree {
+            if self.get(i, j - 1)>= tree {
                 return false;
             }
             j -= 1;
@@ -91,12 +94,11 @@ impl Forest {
         true
     }
 
-    fn is_visible_from_bottom(&self, row: usize, col: usize) -> bool {
-        let tree = self.0[col][row];
+    fn is_visible_from_bottom(&self, i: usize, mut j: usize) -> bool {
+        let tree = self.get(i, j);
 
-        let mut j = col;
-        while j < self.0.len() - 1 {
-            if self.0[j + 1][row] >= tree {
+        while j < self.height - 1 {
+            if self.get(i, j + 1) >= tree {
                 return false;
             }
             j += 1;
@@ -104,14 +106,13 @@ impl Forest {
         true
     }
 
-    fn viewing_distance_left(&self, row: usize, col: usize) -> usize {
-        let tree = self.0[col][row];
+    fn viewing_distance_left(&self, mut i: usize, j: usize) -> usize {
+        let tree = self.get(i, j);
 
         let mut result = 0;
-        let mut i = row;
         while i > 0 {
             result += 1;
-            if self.0[col][i - 1] >= tree {
+            if self.get(i - 1, j) >= tree {
                 break;
             }
             i -= 1;
@@ -119,14 +120,13 @@ impl Forest {
         result
     }
 
-    fn viewing_distance_right(&self, row: usize, col: usize) -> usize {
-        let tree = self.0[col][row];
+    fn viewing_distance_right(&self, mut i: usize, j: usize) -> usize {
+        let tree = self.get(i, j);
 
         let mut result = 0;
-        let mut i = row;
-        while i < self.0.len() - 1 {
+        while i < self.width - 1 {
             result += 1;
-            if self.0[col][i + 1] >= tree {
+            if self.get(i + 1, j) >= tree {
                 break;
             }
             i += 1;
@@ -134,14 +134,13 @@ impl Forest {
         result
     }
 
-    fn viewing_distance_top(&self, row: usize, col: usize) -> usize {
-        let tree = self.0[col][row];
+    fn viewing_distance_top(&self, i: usize, mut j: usize) -> usize {
+        let tree = self.get(i, j);
 
         let mut result = 0;
-        let mut j = col;
         while j > 0 {
             result += 1;
-            if self.0[j - 1][row] >= tree {
+            if self.get(i, j - 1) >= tree {
                 break;
             }
             j -= 1;
@@ -149,14 +148,13 @@ impl Forest {
         result
     }
 
-    fn viewing_distance_bottom(&self, row: usize, col: usize) -> usize {
-        let tree = self.0[col][row];
+    fn viewing_distance_bottom(&self, i: usize, mut j: usize) -> usize {
+        let tree = self.get(i, j);
 
         let mut result = 0;
-        let mut j = col;
-        while j < self.0.len() - 1 {
+        while j < self.height - 1 {
             result += 1;
-            if self.0[j + 1][row] >= tree {
+            if self.get(i, j + 1) >= tree {
                 break;
             }
             j += 1;
