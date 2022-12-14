@@ -66,30 +66,30 @@ impl Area {
     }
 
     fn get_neighbors(&self, i: usize) -> Vec<usize> {
-        let (x, y) = self.to_coords(i);
+        let (x, y) = self.idx_to_coords(i);
         let mut neighbors = vec![];
 
         if x > 0 {
-            neighbors.push(self.from_coords(x - 1, y));
+            neighbors.push(self.coords_to_idx(x - 1, y));
         }
         if x < self.width - 1 {
-            neighbors.push(self.from_coords(x + 1, y));
+            neighbors.push(self.coords_to_idx(x + 1, y));
         }
         if y > 0 {
-            neighbors.push(self.from_coords(x, y - 1));
+            neighbors.push(self.coords_to_idx(x, y - 1));
         }
         if y < self.height - 1 {
-            neighbors.push(self.from_coords(x, y + 1));
+            neighbors.push(self.coords_to_idx(x, y + 1));
         }
 
         neighbors
     }
 
-    fn to_coords(&self, i: usize) -> (usize, usize) {
+    fn idx_to_coords(&self, i: usize) -> (usize, usize) {
         (i % self.width, i / self.width)
     }
 
-    fn from_coords(&self, x: usize, y: usize) -> usize {
+    fn coords_to_idx(&self, x: usize, y: usize) -> usize {
         x + y * self.width
     }
 }
