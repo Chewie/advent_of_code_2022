@@ -1,11 +1,11 @@
 use itertools::EitherOrBoth::{Both, Left, Right};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::BTreeSet};
 
 use nom::{
     branch::alt,
     character::complete::{char, digit1},
     combinator::map,
-    multi::separated_list0,
+    multi::{many1, separated_list0},
     sequence::{delimited, terminated, tuple},
     IResult,
 };
@@ -30,8 +30,15 @@ impl PartialOrd for Packet {
     }
 }
 
-
 impl Packet {
+    fn key1() -> Packet {
+        Packet::List(vec![Packet::List(vec![Packet::Num(2)])])
+    }
+
+    fn key2() -> Packet {
+        Packet::List(vec![Packet::List(vec![Packet::Num(6)])])
+    }
+
     fn parse(input: &str) -> IResult<&str, Packet> {
         alt((
             map(digit1, |d: &str| Packet::Num(d.parse().unwrap())),
@@ -72,13 +79,13 @@ impl Packet {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Pair {
+struct Pair {
     left: Packet,
     right: Packet,
 }
 
 impl Pair {
-    pub fn parse(input: &str) -> IResult<&str, Pair> {
+    fn parse(input: &str) -> IResult<&str, Pair> {
         map(
             tuple((
                 terminated(Packet::parse, char('\n')),
@@ -88,19 +95,19 @@ impl Pair {
         )(input)
     }
 
-    pub fn compare(&self) -> Ordering {
+    fn compare(&self) -> Ordering {
         self.left.compare(&self.right)
     }
 }
 
-pub struct Signal {
+pub struct PairSignal {
     pairs: Vec<Pair>,
 }
 
-impl Signal {
-    pub fn parse(input: &str) -> IResult<&str, Signal> {
-        map(separated_list0(char('\n'), Pair::parse), |pairs| Signal {
-            pairs,
+impl PairSignal {
+    pub fn parse(input: &str) -> IResult<&str, PairSignal> {
+        map(separated_list0(char('\n'), Pair::parse), |pairs| {
+            PairSignal { pairs }
         })(input)
     }
 
@@ -112,6 +119,43 @@ impl Signal {
             .sum()
     }
 }
+
+pub struct OrderedSignal {
+    packets: BTreeSet<Packet>,
+}
+
+impl OrderedSignal {
+    pub fn parse(input: &str) -> IResult<&str, OrderedSignal> {
+        map(
+            separated_list0(many1(char('\n')), Packet::parse),
+            OrderedSignal::new,
+        )(input)
+    }
+
+    fn new(packets: Vec<Packet>) -> OrderedSignal {
+        let mut set: BTreeSet<Packet> = packets.into_iter().collect();
+        set.insert(Packet::key1());
+        set.insert(Packet::key2());
+        OrderedSignal { packets: set }
+    }
+
+    pub fn decoder_key(&self) -> usize {
+        let key1_pos = self
+            .packets
+            .iter()
+            .position(|x| *x == Packet::key1())
+            .unwrap()
+            + 1;
+        let key2_pos = self
+            .packets
+            .iter()
+            .position(|x| *x == Packet::key2())
+            .unwrap()
+            + 1;
+        key1_pos * key2_pos
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn signal_sum_indices_in_right_order() {
+    fn pair_signal_sum_indices_in_right_order() {
         // GIVEN
         let input = indoc! {"
             [1,1,3,1,1]
@@ -258,12 +302,49 @@ mod tests {
             [1,[2,[3,[4,[5,6,7]]]],8,9]
             [1,[2,[3,[4,[5,6,0]]]],8,9]
             "};
-        let (_, signal) = Signal::parse(input).unwrap();
+        let (_, signal) = PairSignal::parse(input).unwrap();
 
         // WHEN
         let result = signal.sum_indices_in_right_order();
 
         // THEN
         assert_eq!(13, result);
+    }
+
+    #[test]
+    fn ordered_signal_decoder_key() {
+        // GIVEN
+        let input = indoc! {"
+            [1,1,3,1,1]
+            [1,1,5,1,1]
+
+            [[1],[2,3,4]]
+            [[1],4]
+
+            [9]
+            [[8,7,6]]
+
+            [[4,4],4,4]
+            [[4,4],4,4,4]
+
+            [7,7,7,7]
+            [7,7,7]
+
+            []
+            [3]
+
+            [[[]]]
+            [[]]
+
+            [1,[2,[3,[4,[5,6,7]]]],8,9]
+            [1,[2,[3,[4,[5,6,0]]]],8,9]
+            "};
+        let (_, signal) = OrderedSignal::parse(input).unwrap();
+
+        // WHEN
+        let result = signal.decoder_key();
+
+        // THEN
+        assert_eq!(140, result);
     }
 }
