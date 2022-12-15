@@ -12,11 +12,24 @@ use nom::{
 
 use itertools::Itertools;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum Packet {
     Num(usize),
     List(Vec<Packet>),
 }
+
+impl Ord for Packet {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.compare(other)
+    }
+}
+
+impl PartialOrd for Packet {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.compare(other))
+    }
+}
+
 
 impl Packet {
     fn parse(input: &str) -> IResult<&str, Packet> {
@@ -30,9 +43,9 @@ impl Packet {
         ))(input)
     }
 
-    fn compare(&self, other: &Packet) -> Order {
+    fn compare(&self, other: &Packet) -> Ordering {
         match (self, other) {
-            (Packet::Num(l), Packet::Num(r)) => self.handle_two_nums(*l, *r),
+            (Packet::Num(l), Packet::Num(r)) => l.cmp(r),
             (Packet::List(l), Packet::List(r)) => self.handle_two_lists(l, r),
             (l @ Packet::Num(_), Packet::List(r)) => {
                 self.handle_two_lists(std::slice::from_ref(l), r)
@@ -43,34 +56,19 @@ impl Packet {
         }
     }
 
-    fn handle_two_nums(&self, l: usize, r: usize) -> Order {
-        match l.cmp(&r) {
-            Ordering::Less => Order::Right,
-            Ordering::Greater => Order::Wrong,
-            Ordering::Equal => Order::Continue,
-        }
-    }
-
-    fn handle_two_lists(&self, l: &[Packet], r: &[Packet]) -> Order {
+    fn handle_two_lists(&self, l: &[Packet], r: &[Packet]) -> Ordering {
         for it in l.iter().zip_longest(r.iter()) {
             match it {
-                Left(_) => return Order::Wrong,
-                Right(_) => return Order::Right,
+                Right(_) => return Ordering::Less,
+                Left(_) => return Ordering::Greater,
                 Both(l, r) => match l.compare(r) {
-                    Order::Continue => continue,
+                    Ordering::Equal => continue,
                     order => return order,
                 },
             }
         }
-        Order::Continue
+        Ordering::Equal
     }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Order {
-    Right,
-    Wrong,
-    Continue,
 }
 
 #[derive(Debug, PartialEq)]
@@ -90,7 +88,7 @@ impl Pair {
         )(input)
     }
 
-    pub fn compare(&self) -> Order {
+    pub fn compare(&self) -> Ordering {
         self.left.compare(&self.right)
     }
 }
@@ -109,7 +107,7 @@ impl Signal {
     pub fn sum_indices_in_right_order(&self) -> usize {
         (1..)
             .zip(self.pairs.iter())
-            .filter(|(_, pair)| pair.compare() == Order::Right)
+            .filter(|(_, pair)| pair.compare() == Ordering::Less)
             .map(|(i, _)| i)
             .sum()
     }
@@ -197,7 +195,7 @@ mod tests {
         let result = pair.compare();
 
         // THEN
-        assert_eq!(Order::Right, result);
+        assert_eq!(Ordering::Less, result);
     }
 
     #[test]
@@ -213,7 +211,7 @@ mod tests {
         let result = pair.compare();
 
         // THEN
-        assert_eq!(Order::Right, result);
+        assert_eq!(Ordering::Less, result);
     }
 
     #[test]
@@ -229,7 +227,7 @@ mod tests {
         let result = pair.compare();
 
         // THEN
-        assert_eq!(Order::Wrong, result);
+        assert_eq!(Ordering::Greater, result);
     }
 
     #[test]
