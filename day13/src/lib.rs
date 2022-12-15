@@ -1,4 +1,3 @@
-use itertools::EitherOrBoth::{Both, Left, Right};
 use std::{cmp::Ordering, collections::BTreeSet};
 
 use nom::{
@@ -10,8 +9,6 @@ use nom::{
     IResult,
 };
 
-use itertools::Itertools;
-
 #[derive(Debug, Eq, PartialEq)]
 enum Packet {
     Num(usize),
@@ -20,13 +17,18 @@ enum Packet {
 
 impl Ord for Packet {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.compare(other)
+        match (self, other) {
+            (Packet::Num(l), Packet::Num(r)) => l.cmp(r),
+            (Packet::List(l), Packet::List(r)) => l.cmp(r),
+            (l @ Packet::Num(_), Packet::List(r)) => std::slice::from_ref(l).cmp(r),
+            (Packet::List(l), r @ Packet::Num(_)) => l.as_slice().cmp(std::slice::from_ref(r)),
+        }
     }
 }
 
 impl PartialOrd for Packet {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.compare(other))
+        Some(self.cmp(other))
     }
 }
 
@@ -50,32 +52,6 @@ impl Packet {
         ))(input)
     }
 
-    fn compare(&self, other: &Packet) -> Ordering {
-        match (self, other) {
-            (Packet::Num(l), Packet::Num(r)) => l.cmp(r),
-            (Packet::List(l), Packet::List(r)) => self.handle_two_lists(l, r),
-            (l @ Packet::Num(_), Packet::List(r)) => {
-                self.handle_two_lists(std::slice::from_ref(l), r)
-            }
-            (Packet::List(l), r @ Packet::Num(_)) => {
-                self.handle_two_lists(l, std::slice::from_ref(r))
-            }
-        }
-    }
-
-    fn handle_two_lists(&self, l: &[Packet], r: &[Packet]) -> Ordering {
-        for it in l.iter().zip_longest(r.iter()) {
-            match it {
-                Right(_) => return Ordering::Less,
-                Left(_) => return Ordering::Greater,
-                Both(l, r) => match l.compare(r) {
-                    Ordering::Equal => continue,
-                    order => return order,
-                },
-            }
-        }
-        Ordering::Equal
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -96,7 +72,7 @@ impl Pair {
     }
 
     fn compare(&self) -> Ordering {
-        self.left.compare(&self.right)
+        self.left.cmp(&self.right)
     }
 }
 
