@@ -8,4 +8,10 @@ fn main() {
     cave.step_until_abyss();
 
     println!("Number of rests before abyss: {}", cave.number_of_rests());
+
+    let (_, mut cave_floor) = day14::Cave::parse(&input).unwrap();
+
+    cave_floor.step_until_source_blocked();
+
+    println!("Number of rests before source is blocked: {}", cave_floor.number_of_rests());
 }

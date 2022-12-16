@@ -70,6 +70,8 @@ pub struct Cave {
     current_sand: Option<(u32, u32)>,
     number_of_rests: usize,
     abyss_reached: bool,
+    source_reached: bool,
+    floor: u32,
 }
 
 impl Index<(u32, u32)> for Cave {
@@ -104,6 +106,8 @@ impl Cave {
             current_sand: None,
             number_of_rests: 0,
             abyss_reached: false,
+            source_reached: false,
+            floor: 0,
         }
     }
 
@@ -114,22 +118,31 @@ impl Cave {
                 let (src, dest) = (window[0], window[1]);
                 for point in Path::points_in_pair(src, dest) {
                     cave[point] = Cell::Rock;
+                    if point.1 + 2 > cave.floor {
+                        cave.floor = point.1 + 2;
+                    }
                 }
             }
         }
         cave
     }
 
-    pub fn step(&mut self) {
+    pub fn number_of_rests(&self) -> usize {
+        self.number_of_rests
+    }
+
+    // ABYSS VERSION
+
+    pub fn step_abyss(&mut self) {
         match self.current_sand {
             None => {
                 self.current_sand = Some((500, 1));
                 self[(500, 1)] = Cell::Sand;
             }
             Some((s_x, s_y)) => {
-                if !self.try_cell((s_x, s_y + 1))
-                    && !self.try_cell((s_x - 1, s_y + 1))
-                    && !self.try_cell((s_x + 1, s_y + 1))
+                if !self.try_cell_abyss((s_x, s_y + 1))
+                    && !self.try_cell_abyss((s_x - 1, s_y + 1))
+                    && !self.try_cell_abyss((s_x + 1, s_y + 1))
                 {
                     self.current_sand = None;
                     self.number_of_rests += 1;
@@ -141,7 +154,7 @@ impl Cave {
         }
     }
 
-    fn try_cell(&mut self, cell: (u32, u32)) -> bool {
+    fn try_cell_abyss(&mut self, cell: (u32, u32)) -> bool {
         let current_sand = self.current_sand.unwrap();
         if !self[cell].is_blocked() {
             self[current_sand] = Cell::Air;
@@ -155,13 +168,52 @@ impl Cave {
 
     pub fn step_until_abyss(&mut self) {
         while !self.abyss_reached {
-            self.step();
+            self.step_abyss();
         }
     }
 
-    pub fn number_of_rests(&self) -> usize {
-        self.number_of_rests
+    // FLOOR VERSION
+
+    pub fn step_floor(&mut self) {
+        match self.current_sand {
+            None => {
+                if self[(500, 0)].is_blocked() {
+                    self.source_reached = true;
+                } else {
+                self.current_sand = Some((500, 0));
+                self[(500, 0)] = Cell::Sand;
+                }
+            }
+            Some((s_x, s_y)) => {
+                if !self.try_cell_floor((s_x, s_y + 1))
+                    && !self.try_cell_floor((s_x - 1, s_y + 1))
+                    && !self.try_cell_floor((s_x + 1, s_y + 1))
+                {
+                    self.current_sand = None;
+                    self.number_of_rests += 1;
+                }
+            }
+        }
     }
+
+    fn try_cell_floor(&mut self, cell: (u32, u32)) -> bool {
+        let current_sand = self.current_sand.unwrap();
+        if cell.1 != self.floor && !self[cell].is_blocked() {
+            self[current_sand] = Cell::Air;
+            self[cell] = Cell::Sand;
+            self.current_sand = Some(cell);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn step_until_source_blocked(&mut self) {
+        while !self.source_reached {
+            self.step_floor();
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -188,9 +240,9 @@ mod tests {
         }
 
         fn step_until_rest(&mut self) {
-            self.step();
+            self.step_abyss();
             while self.current_sand.is_some() {
-                self.step();
+                self.step_abyss();
             }
         }
 
@@ -201,20 +253,6 @@ mod tests {
         }
     }
 
-    //#[test]
-    //fn cave_lowest_rock() {
-    //// GIVEN
-    //let input = indoc! {"
-    //498,4 -> 498,6 -> 496,6
-    //503,4 -> 502,4 -> 502,9 -> 494,9
-    //"};
-
-    //// WHEN
-    //let (_, cave) = Cave::parse(input).unwrap();
-
-    //// THEN
-    //assert_eq!(9, cave.lowest_rock());
-    //}
 
     #[test]
     fn cave_dump_slice() {
@@ -258,7 +296,7 @@ mod tests {
         let (_, mut cave) = Cave::parse(input).unwrap();
 
         // WHEN
-        cave.step();
+        cave.step_abyss();
 
         // THEN
         let mut output = String::new();
@@ -291,8 +329,8 @@ mod tests {
         let (_, mut cave) = Cave::parse(input).unwrap();
 
         // WHEN
-        cave.step();
-        cave.step();
+        cave.step_abyss();
+        cave.step_abyss();
 
         // THEN
         let mut output = String::new();
@@ -395,5 +433,36 @@ mod tests {
 
         // THEN
         assert_eq!(24, cave.number_of_rests());
+    }
+
+    #[test]
+    fn cave_floor() {
+    // GIVEN
+    let input = indoc! {"
+    498,4 -> 498,6 -> 496,6
+    503,4 -> 502,4 -> 502,9 -> 494,9
+    "};
+
+    // WHEN
+    let (_, cave) = Cave::parse(input).unwrap();
+
+    // THEN
+    assert_eq!(11, cave.floor);
+    }
+
+    #[test]
+    fn cave_rests_before_source_blocked() {
+        // GIVEN
+        let input = indoc! {"
+            498,4 -> 498,6 -> 496,6
+            503,4 -> 502,4 -> 502,9 -> 494,9
+        "};
+        let (_, mut cave) = Cave::parse(input).unwrap();
+
+        // WHEN
+        cave.step_until_source_blocked();
+
+        // THEN
+        assert_eq!(93, cave.number_of_rests());
     }
 }
