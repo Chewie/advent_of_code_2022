@@ -1,7 +1,9 @@
-use std::{collections::HashSet, fmt::Display};
+#![feature(iterator_try_reduce)]
+#![feature(control_flow_enum)]
+
 use rayon::prelude::*;
 
-use fixedbitset::FixedBitSet;
+use std::{collections::HashSet, ops::ControlFlow};
 
 use regex::Regex;
 
@@ -12,30 +14,36 @@ struct Point {
 }
 
 impl Point {
-    fn distance(&self, other: &Point) -> i64 {
-        (self.x - other.x).abs() + (self.y - other.y).abs()
+    fn distance(&self, other: &Point) -> u64 {
+        self.x.abs_diff(other.x) + self.y.abs_diff(other.y)
     }
 }
 
-#[derive(Clone, PartialEq)]
-pub enum Cell {
-    Unknown,
-    Sensor,
-    Beacon,
-    NotBeacon,
+#[derive(Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Debug)]
+struct ClampedRange {
+    start: i64,
+    end: i64,
 }
 
-impl Display for Cell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let c = match self {
-            Cell::Unknown => '.',
-            Cell::Sensor => 'S',
-            Cell::Beacon => 'B',
-            Cell::NotBeacon => '#',
-        };
-        write!(f, "{}", c)
+impl ClampedRange {
+    fn new(start: i64, end: i64, lower_bound: i64, higher_bound: i64) -> Self {
+        ClampedRange {
+            start: num::clamp(start, lower_bound, higher_bound),
+            end: num::clamp(end, lower_bound, higher_bound),
+        }
     }
+
+    fn maybe_merge(&self, other: ClampedRange) -> Option<ClampedRange> {
+        if self.end < other.start {
+            None
+        } else {
+            Some(ClampedRange { start: self.start, end: std::cmp::max(self.end, other.end) })
+        }
+
+    }
+
 }
+
 
 pub struct Tunnel {
     pairs: Vec<(Point, Point)>,
@@ -77,48 +85,55 @@ impl Tunnel {
             .count()
     }
 
-    fn find_beacon(&self) -> Point {
-        (0..=self.y_bound)
-            .into_par_iter()
-            .find_map_any(|y| {
-                let mut set = FixedBitSet::with_capacity(self.x_bound as usize + 1);
-
-                for (sensor, beacon) in self.pairs.iter() {
-                    let dist_to_line = (sensor.y - y).abs();
-                    let range = sensor.distance(beacon) - dist_to_line;
-
-                    if range < 0 {
-                        continue;
-                    }
-
-                    let lower = num::clamp(sensor.x - range, 0, self.x_bound) as usize;
-                    let higher = num::clamp(sensor.x + range, 0, self.x_bound) as usize + 1;
-                    set.insert_range(lower..higher);
-                }
-                set.toggle_range(..);
-                if !set.is_clear() {
-                    Some(Point {
-                        x: set.ones().next().unwrap() as i64,
-                        y,
-                    })
-                } else {
-                    None
-                }
-            })
-            .unwrap()
-    }
-
     pub fn tuning_frequency(&self) -> i64 {
         let beacon = self.find_beacon();
         beacon.x * 4000000 + beacon.y
+    }
+
+
+    fn find_beacon(&self) -> Point {
+        (0..=self.y_bound)
+            .into_par_iter()
+            .find_map_first(|y| {
+                let mut ranges = Vec::new();
+
+                for (sensor, beacon) in self.pairs.iter() {
+                    let dist_to_line = sensor.y.abs_diff(y);
+                    let range_radius = sensor.distance(beacon).saturating_sub(dist_to_line);
+
+                    let range = ClampedRange::new(
+                        sensor.x - range_radius as i64,
+                        sensor.x + range_radius as i64,
+                        0,
+                        self.x_bound,
+                    );
+                    ranges.push(range);
+                }
+                ranges.sort_unstable();
+                ranges
+                    .into_iter()
+                    .try_reduce(|acc, range| {
+                        if let Some(new_range) = acc.maybe_merge(range) {
+                            ControlFlow::Continue(new_range)
+                        } else {
+                            ControlFlow::Break(acc)
+                        }
+                    })
+                    .break_value()
+                    .map(|range| Point {
+                        x: range.end + 1,
+                        y,
+                    })
+            })
+            .unwrap()
     }
 
     fn not_beacons_on_line(&self, y: i64) -> HashSet<Point> {
         let mut set = HashSet::new();
 
         for (sensor, beacon) in self.pairs.iter() {
-            let dist_to_line = (sensor.y - y).abs();
-            let range = sensor.distance(beacon) - dist_to_line;
+            let dist_to_line = sensor.y.abs_diff(y);
+            let range = sensor.distance(beacon).saturating_sub(dist_to_line) as i64;
 
             for offset in -range..=range {
                 let candidate = Point {
