@@ -5,6 +5,8 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use itertools::Itertools;
+
 use regex::Regex;
 
 #[derive(Debug)]
@@ -140,7 +142,19 @@ impl Cave {
     }
 
     pub fn max_pressure_with_elephant(&self) -> usize {
-        self.max_pressure()
+        self.potential_valves
+            .iter()
+            .copied()
+            .powerset()
+            .map(|set| {
+                let set = HashSet::from_iter(set);
+                let complement = &self.potential_valves - &set;
+
+                self.pressure(26, 0, 0, set, &RefCell::new(0))
+                    + self.pressure(26, 0, 0, complement, &RefCell::new(0))
+            })
+            .max()
+            .unwrap()
     }
 
     fn pressure(
@@ -155,10 +169,11 @@ impl Cave {
             *lower_bound.borrow_mut() = current_pressure;
         }
 
-        let best_potential_pressure = current_pressure + remaining_valves
-            .iter()
-            .map(|v| self.flow_rates[*v] * (remaining_minutes))
-            .sum::<usize>();
+        let best_potential_pressure = current_pressure
+            + remaining_valves
+                .iter()
+                .map(|v| self.flow_rates[*v] * (remaining_minutes))
+                .sum::<usize>();
 
         if best_potential_pressure < *lower_bound.borrow() {
             return current_pressure;
@@ -239,7 +254,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn graph_max_pressure_with_elephant() {
         // GIVEN
         let input = indoc! {"
