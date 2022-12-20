@@ -43,14 +43,14 @@ impl Valve {
 }
 
 #[derive(Debug, PartialEq)]
-struct Grid {
+struct Matrix {
     width: usize,
     cells: Vec<usize>,
 }
-impl Grid {
+impl Matrix {
     fn from_edge_vector(valves: &[Valve]) -> Self {
         let width = valves.len();
-        let mut adjacency_matrix = Grid {
+        let mut adjacency_matrix = Matrix {
             width,
             cells: vec![usize::MAX; width * width],
         };
@@ -64,7 +64,7 @@ impl Grid {
         adjacency_matrix
     }
 
-    fn floyd_warshall(&mut self) -> () {
+    fn floyd_warshall(&mut self) {
         for i in 0..self.width {
             self[(i, i)] = 0;
         }
@@ -79,7 +79,7 @@ impl Grid {
     }
 }
 
-impl Index<(usize, usize)> for Grid {
+impl Index<(usize, usize)> for Matrix {
     type Output = usize;
 
     fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
@@ -87,14 +87,14 @@ impl Index<(usize, usize)> for Grid {
     }
 }
 
-impl IndexMut<(usize, usize)> for Grid {
+impl IndexMut<(usize, usize)> for Matrix {
     fn index_mut(&mut self, (i, j): (usize, usize)) -> &mut Self::Output {
         &mut self.cells[i + j * self.width]
     }
 }
 
 pub struct Cave {
-    valves: Grid,
+    distances: Matrix,
     potential_valves: HashSet<usize>,
     flow_rates: Vec<usize>,
 }
@@ -118,12 +118,12 @@ impl Cave {
             })
             .collect();
 
-        let valves_list = Valve::from_named_valves(named_valves);
-        let valves = Grid::from_edge_vector(&valves_list);
+        let valves = Valve::from_named_valves(named_valves);
+        let distances = Matrix::from_edge_vector(&valves);
 
-        let flow_rates = valves_list.iter().map(|v| v.flow_rate).collect();
+        let flow_rates = valves.iter().map(|v| v.flow_rate).collect();
 
-        let potential_valves = valves_list
+        let potential_valves = valves
             .iter()
             .enumerate()
             .filter(|(_i, v)| v.flow_rate > 0)
@@ -131,7 +131,7 @@ impl Cave {
             .collect();
 
         Cave {
-            valves,
+            distances,
             potential_valves,
             flow_rates,
         }
@@ -166,7 +166,7 @@ impl Cave {
         lower_bound: &RefCell<usize>,
     ) -> usize {
         if *lower_bound.borrow() < current_pressure {
-            *lower_bound.borrow_mut() = current_pressure;
+            lower_bound.replace(current_pressure);
         }
 
         let best_potential_pressure = current_pressure
@@ -182,10 +182,10 @@ impl Cave {
         remaining_valves
             .iter()
             .copied()
-            .filter(|valve| remaining_minutes > (self.valves[(current_valve, *valve)] + 1))
+            .filter(|valve| remaining_minutes > (self.distances[(current_valve, *valve)] + 1))
             .map(|valve| {
                 let new_remaining_minutes =
-                    remaining_minutes - (self.valves[(current_valve, valve)] + 1);
+                    remaining_minutes - (self.distances[(current_valve, valve)] + 1);
                 let new_pressure =
                     current_pressure + new_remaining_minutes * self.flow_rates[valve];
                 let new_remaining_valves = &remaining_valves - &HashSet::from([valve]);
@@ -221,11 +221,11 @@ mod tests {
 
         // THEN
         assert_eq!(
-            Grid {
+            Matrix {
                 width: 3,
                 cells: vec![0, 1, 2, 1, 0, 1, 2, 1, 0,]
             },
-            graph.valves
+            graph.distances
         );
     }
 
